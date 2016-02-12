@@ -45,9 +45,43 @@ class Employee
   def assign_employee_performance
     #expected tokens in order of negative, negative qualifiers, positive, positive qualifiers
     temp_tokens = get_review_tokens
-    negative_score = get_score(temp_tokens[0].split(","), temp_tokens[1].split(","))
-    positive_score = get_score(temp_tokens[2].split(","), temp_tokens[3].split(","))
-    positive_score - negative_score > 0 ? @performance = true : @performance = false
+    total = 0
+    temp_tokens[0].each do |w|
+      if @review.match(/\b#{w}\b/i)
+        total -= 1
+        total -= get_negative_score(temp_tokens[1], w)
+      end
+    end
+    temp_tokens[2].each do |w|
+      if @review.match(/\b#{w}\b/i)
+        total += 1
+        total += get_positive_score(temp_tokens[1],temp_tokens[3],w)
+      end
+    end
+    puts "#{@first_name} #{total}"
+    total > 0 ? @performance = true : @performance = false
+  end
+
+  private def get_negative_score(qualifiers, word)
+    total = 0
+    qualifiers.each do |q|
+      total += 2 if @review.match(/\b#{q}\b\s(\S+\s){,2}\b#{word}\b/i)
+    end
+    total
+  end
+
+  private def get_positive_score(negative_qualifiers, positive_qualifiers, word)
+    total = 0
+    positive_qualifiers.each do |pq|
+      if @review.match(/\b#{pq}\b\s(\S+\s){,2}\b#{word}\b/i)
+        negative = false
+        negative_qualifiers.each do |nq|
+          negative = true if @review.match(/\b#{nq}\b\s(\S+\s)\b#{pq}\b/i)
+        end
+        negative ? total -= 3 : total += 2
+      end
+    end
+    total
   end
 
   private def get_score(words, qualifiers)
@@ -65,9 +99,13 @@ class Employee
 
   private def get_review_tokens
     input = File.open("tokens")
+    results = []
     temp_array = input.readlines("\n")
-    temp_array.each {|s| s.strip!}
+    temp_array.each do |s|
+      s.strip!
+      results << s.split(",")
+    end
     input.close
-    temp_array
+    results
   end
 end
